@@ -28,6 +28,16 @@ export const login = async (data: { email: string; password: string }) => {
     throw error.response?.data || error.message;
   }
 };
+
+// CURRENT USER
+export const getMe = async () => {
+  try {
+    const response = await api.get("/auth/me");
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || error.message;
+  }
+};
 // GET All
 export const getAll = async (endpoint: string,params:Record<string,any>={}) => {
   try {
@@ -62,6 +72,16 @@ export const createOne = async (endpoint: string, data: any) => {
 export const updateOne = async (endpoint: string, id: string, data: any) => {
   try {
     const response = await api.put(`/${endpoint}/${id}`,data);
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || error.message;
+  }
+};
+
+// UPDATE PROFILE (users)
+export const updateProfile = async (id: string, data: any) => {
+  try {
+    const response = await api.put(`/auth/${id}`, data);
     return response.data;
   } catch (error: any) {
     throw error.response?.data || error.message;

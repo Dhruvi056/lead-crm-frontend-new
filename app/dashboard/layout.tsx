@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -9,7 +9,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { toast } from "react-hot-toast";
 
-import { logout } from "@/app/utils/api"
+import { logout, getMe } from "@/app/utils/api"
 export default function DashboardLayout({
   children,
 }: {
@@ -17,7 +17,24 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [initials, setInitials] = useState<string>("AD")
+  const [role, setRole] = useState<string>("")
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await getMe();
+        const first: string = me?.user?.firstName || "";
+        const last: string = me?.user?.lastName || "";
+        setRole(me?.user?.role || "")
+        const fi = first?.charAt(0)?.toUpperCase() || "A";
+        const li = last?.charAt(0)?.toUpperCase() || "D";
+        setInitials(`${fi}${li}`)
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, [])
 
     const handleLogout = async () => {
     try {
@@ -46,7 +63,7 @@ export default function DashboardLayout({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>AD</AvatarFallback>
+                  <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -82,19 +99,21 @@ export default function DashboardLayout({
                   Leads
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/dashboard/users"
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    pathname === "/dashboard/users"
-                      ? "bg-red-50 text-red-700 border-r-2 border-primary"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                >
-                  <User className="mr-3 h-4 w-4" />
-                  Users
-                </Link>
-              </li>
+              {role === "SuperAdmin" && (
+                <li>
+                  <Link
+                    href="/dashboard/users"
+                    className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      pathname === "/dashboard/users"
+                        ? "bg-red-50 text-red-700 border-r-2 border-primary"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                  >
+                    <User className="mr-3 h-4 w-4" />
+                    Users
+                  </Link>
+                </li>
+              )}
             </ul>
           </nav>
         </aside>

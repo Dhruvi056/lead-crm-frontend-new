@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { createOne, updateOne } from "@/app/utils/api"
+import { Eye, EyeOff } from "lucide-react";
 
 interface AddUserDrawerProps {
   open: boolean
@@ -31,7 +32,7 @@ export function AddUserDrawer({ open, onOpenChange, onSaved, userData }: AddUser
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [showPassword, setShowPassword] = useState(false);
   const isEdit = Boolean(userData && (userData as any)._id)
 
   useEffect(() => {
@@ -68,13 +69,11 @@ export function AddUserDrawer({ open, onOpenChange, onSaved, userData }: AddUser
     })
   }, [])
 
-  // 🔹 inline validation
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     validateField(field, value)
   }
 
-  // 🔹 field validation
   const validateField = (field: string, value: string) => {
     setErrors((prev) => {
       const newErrors = { ...prev }
@@ -113,7 +112,6 @@ export function AddUserDrawer({ open, onOpenChange, onSaved, userData }: AddUser
     })
   }
 
-  // 🔹 validate all fields at once (on submit)
   const validateAll = () => {
     const fields: Record<string, string> = {}
     if (!formData.firstName.trim()) fields.firstName = "First Name is required"
@@ -242,18 +240,29 @@ export function AddUserDrawer({ open, onOpenChange, onSaved, userData }: AddUser
 
           {/* Password (only on create) */}
           {!isEdit && (
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-                placeholder="Enter password"
-                className={errors.password ? "border-red-500" : ""}
-              />
-              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
-            </div>
+            <div className="space-y-2 relative">
+  <Label htmlFor="password">Password</Label>
+  <Input
+    id="password"
+    type={showPassword ? "text" : "password"}
+    value={formData.password}
+    onChange={(e) => handleChange("password", e.target.value)}
+    placeholder="Enter password"
+    className={errors.password ? "border-red-500 pr-10" : "pr-10"} // pr-10 for icon space
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword((prev) => !prev)}
+    className="absolute right-3 top-[38px] text-gray-500"
+    tabIndex={-1}
+  >
+    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+  </button>
+  {errors.password && (
+    <p className="text-sm text-red-500">{errors.password}</p>
+  )}
+</div>
+
           )}
 
           {/* Role */}
