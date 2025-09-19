@@ -3,7 +3,7 @@ import axios from "axios";
 const NEXT_PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE as string;
 
 const api = axios.create({
-  baseURL: NEXT_PUBLIC_API_BASE,
+  baseURL: NEXT_PUBLIC_API_BASE?.replace(/\/$/, ''), // Remove trailing slash
   headers: {
     "Content-Type": "application/json",
   },
@@ -51,7 +51,7 @@ export const getAll = async (endpoint: string,params:Record<string,any>={}) => {
 //  GET by ID
 export const getById = async (endpoint: string, id: string) => {
   try {
-    const response = await api.get(endpoint);
+    const response = await api.get(`/${endpoint}/${id}`);
     return response.data;
   } catch (error: any) {
     throw error.response?.data || error.message;
@@ -107,3 +107,23 @@ export const logout = async () => {
     throw error.response?.data || error.message;
   }
 };
+
+// CHANGE PASSWORD
+export const changePassword = async (payload: { currentPassword: string; newPassword: string }) => {
+  try {
+    const response = await api.post('/auth/change-password', payload);
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || error.message;
+  }
+}
+
+// UPDATE PROFILE API
+export const updateProfileApi = async (id: string, payload: { firstName?: string; lastName?: string; email?: string; phoneNumber?: number }) => {
+  try {
+    const response = await api.put(`/auth/${id}`, payload);
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || error.message;
+  }
+}
