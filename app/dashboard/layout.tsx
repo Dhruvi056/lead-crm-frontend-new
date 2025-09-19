@@ -54,7 +54,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-6 py-4">
           <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
@@ -82,7 +82,6 @@ export default function DashboardLayout({
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
         <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-sm">
           <nav className="p-4">
             <ul className="space-y-2">
@@ -117,8 +116,6 @@ export default function DashboardLayout({
             </ul>
           </nav>
         </aside>
-
-        {/* Main Content */}
         <main className="ml-64 flex-1 p-6">{children}</main>
       </div>
     </div>

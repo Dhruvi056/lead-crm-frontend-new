@@ -30,18 +30,17 @@ export default function EditProfilePage() {
     confirmPassword: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required"
-    }
+    if (!formData.firstName.trim()) { newErrors.firstName = "First name is required"}
 
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required"
-    }
+    if (!formData.lastName.trim()) { newErrors.lastName = "Last name is required" }
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required"
@@ -51,16 +50,10 @@ export default function EditProfilePage() {
 
     // Password validation (only if user is trying to change password)
     if (formData.newPassword || formData.confirmPassword || formData.currentPassword) {
-      if (!formData.currentPassword) {
-        newErrors.currentPassword = "Current password is required to change password"
-      }
-      if (!formData.newPassword) {
-        newErrors.newPassword = "New password is required"
-      } else if (formData.newPassword.length < 6) {
-        newErrors.newPassword = "New password must be at least 6 characters"
-      }
-      if (formData.newPassword !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match"
+      if (!formData.currentPassword) { newErrors.currentPassword = "Current password is required to change password" }
+      if (!formData.newPassword) {newErrors.newPassword = "New password is required"
+      } else if (formData.newPassword.length < 6) {newErrors.newPassword = "New password must be at least 6 characters" }
+      if (formData.newPassword !== formData.confirmPassword) {newErrors.confirmPassword = "Passwords do not match"
       }
     }
 
@@ -70,11 +63,8 @@ export default function EditProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!validateForm()) return
-
     setIsLoading(true)
-
     try {
       const payload: any = {
         firstName: formData.firstName,
@@ -130,7 +120,7 @@ export default function EditProfilePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center space-x-4">
+      <div className="flex place-items-center space-x-4">
         <Link href="/dashboard/leads">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -213,7 +203,7 @@ export default function EditProfilePage() {
                   <div className="relative">
                     <Input
                       id="currentPassword"
-                      type={showPassword ? "text" : "password"}
+                      type={showCurrentPassword ? "text" : "password"}
                       value={formData.currentPassword}
                       onChange={(e) => handleInputChange("currentPassword", e.target.value)}
                       className={errors.currentPassword ? "border-red-500 pr-10" : "pr-10"}
@@ -221,9 +211,9 @@ export default function EditProfilePage() {
                     <button
                       type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
-                      onClick={() => setShowPassword((prev) => !prev)}
+                      onClick={() => setShowCurrentPassword((prev) => !prev)}
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   {errors.currentPassword && <p className="text-sm text-red-500">{errors.currentPassword}</p>}
@@ -236,7 +226,7 @@ export default function EditProfilePage() {
                     <div className="relative">
                       <Input
                         id="newPassword"
-                        type={showPassword ? "text" : "password"}
+                        type={showNewPassword ? "text" : "password"}
                         value={formData.newPassword}
                         onChange={(e) => handleInputChange("newPassword", e.target.value)}
                         className={errors.newPassword ? "border-red-500 pr-10" : "pr-10"}
@@ -244,9 +234,9 @@ export default function EditProfilePage() {
                       <button
                         type="button"
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
-                        onClick={() => setShowPassword((prev) => !prev)}
+                        onClick={() => setShowNewPassword((prev) => !prev)}
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                     {errors.newPassword && <p className="text-sm text-red-500">{errors.newPassword}</p>}
@@ -257,7 +247,7 @@ export default function EditProfilePage() {
                     <div className="relative">
                       <Input
                         id="confirmPassword"
-                        type={showPassword ? "text" : "password"}
+                        type={showConfirmPassword ? "text" : "password"}
                         value={formData.confirmPassword}
                         onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                         className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
@@ -265,9 +255,9 @@ export default function EditProfilePage() {
                       <button
                         type="button"
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
-                        onClick={() => setShowPassword((prev) => !prev)}
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                     {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}

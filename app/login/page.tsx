@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string;}>({});
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -32,7 +32,7 @@ export default function LoginPage() {
     if (!password) {
       newErrors.password = "Password is required";
     } else if (!strongPasswordRegex.test(password)) {
-      newErrors.password ="Password must include uppercase, lowercase, number, and special character";
+      newErrors.password ="Password is invaild";
     }
 
     setErrors(newErrors);
@@ -84,7 +84,6 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email field */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -117,7 +116,6 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Password field */}
             <div className="space-y-2 relative">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -137,15 +135,16 @@ export default function LoginPage() {
                     setErrors((prev) => ({
                       ...prev,
                       password:
-                        "Password must include uppercase, lowercase, number, and special character",
+                        "Password is invaild",
                     }));
                   } else {
                     setErrors((prev) => ({ ...prev, password: "" }));
                   }
                 }}
-                className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                className={ "border-red-500 pr-10" : "pr-10"}
               />
-              <button
+              {password.length > 0 &&(
+                 <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute right-3 top-[38px] text-gray-500"
@@ -153,9 +152,11 @@ export default function LoginPage() {
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
-              {errors.password && (
-                <p className="text-sm text-red-500">{errors.password}</p>
               )}
+             
+              
+                <p className="text-sm text-red-500">Password is invaild</p>
+         
             </div>
 
             {/* Submit button */}
