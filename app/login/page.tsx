@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string;}>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
                     setErrors((prev) => ({ ...prev, password: "" }));
                   }
                 }}
-                className={ "border-red-500 pr-10" : "pr-10"}
+                className={errors.password ? "border-red-500 pr-10" : "pr-10"}
               />
               {password.length > 0 &&(
                  <button
@@ -154,9 +154,9 @@ export default function LoginPage() {
               </button>
               )}
              
-              
+              {errors.password && (
                 <p className="text-sm text-red-500">Password is invaild</p>
-         
+              )}
             </div>
 
             {/* Submit button */}
