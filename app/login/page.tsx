@@ -44,7 +44,7 @@ export default function LoginPage() {
     if (!validateForm()) return;
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:8081/api/v1/auth", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/auth`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
