@@ -127,8 +127,7 @@ export default function EditLeadDrawer({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.firstName) newErrors.firstName = "First Name is required";
-    if (!formData.websiteURL) newErrors.websiteURL = "Website URL is required";
-    if (!formData.linkdinURL) newErrors.linkdinURL = "LinkedIn URL is required";
+    // websiteURL and linkdinURL optional
     if (!formData.industry) newErrors.industry = "Industry is required";
     if (!formData.whatsUpNumber) newErrors.whatsUpNumber = "";
     else if (formData.whatsUpNumber.length < 10) newErrors.whatsUpNumber = "WhatsApp number must be at least 10 digits";
@@ -138,8 +137,7 @@ export default function EditLeadDrawer({
       else if (!emailRegex.test(e)) newErrors[`email_${i}`] = "Email is invalid";
     });
 
-    if (!formData.workEmail) newErrors.workEmail = "Work Email is required";
-    else if (!emailRegex.test(formData.workEmail)) newErrors.workEmail = "Work Email is invalid";
+    if (formData.workEmail && !emailRegex.test(formData.workEmail)) newErrors.workEmail = "Work Email is invalid";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -151,7 +149,13 @@ export default function EditLeadDrawer({
     setIsSubmitting(true);
 
     try {
-      const payload = { ...formData, email };
+      const payload = { 
+        ...formData, 
+        email,
+        workEmail: formData.workEmail?.trim() ? formData.workEmail : null,
+        websiteURL: formData.websiteURL?.trim() ? formData.websiteURL : null,
+        linkdinURL: formData.linkdinURL?.trim() ? formData.linkdinURL : null,
+      };
       await updateOne(LEADS_ENDPOINT, leadData._id, payload);
       onSaved?.();
       onOpenChange(false);

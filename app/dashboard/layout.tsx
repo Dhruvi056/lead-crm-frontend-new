@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { UsersIcon, User, LogOut } from "lucide-react"
+import { UsersIcon, User, LogOut, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { toast } from "react-hot-toast";
@@ -19,6 +19,7 @@ export default function DashboardLayout({
   const router = useRouter()
   const [initials, setInitials] = useState<string>("AD")
   const [role, setRole] = useState<string>("")
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -52,12 +53,31 @@ export default function DashboardLayout({
     router.push("/dashboard/profile")
   }
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4">
-          <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4">
+          <div className="flex items-center space-x-4">
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              onClick={toggleMobileMenu}
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+            <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -82,12 +102,27 @@ export default function DashboardLayout({
       </header>
 
       <div className="flex">
-        <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-sm">
+        {/* Mobile sidebar overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
+            onClick={closeMobileMenu}
+          />
+        )}
+
+        {/* Sidebar */}
+        <aside className={`
+          fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-sm z-40
+          transform transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0
+        `}>
           <nav className="p-4">
             <ul className="space-y-2">
               <li>
                 <Link
                   href="/dashboard/leads"
+                  onClick={closeMobileMenu}
                   className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                     pathname === "/dashboard/leads"
                       ? "bg-red-50 text-red-700 border-r-2 border-primary"
@@ -102,6 +137,7 @@ export default function DashboardLayout({
                 <li>
                   <Link
                     href="/dashboard/users"
+                    onClick={closeMobileMenu}
                     className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                       pathname === "/dashboard/users"
                         ? "bg-red-50 text-red-700 border-r-2 border-primary"
@@ -116,7 +152,11 @@ export default function DashboardLayout({
             </ul>
           </nav>
         </aside>
-        <main className="ml-64 flex-1 p-6">{children}</main>
+
+        {/* Main content - full width on mobile, with margin on desktop */}
+        <main className="w-full md:ml-64 p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   )

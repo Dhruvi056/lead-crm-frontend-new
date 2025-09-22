@@ -30,20 +30,12 @@ function PhoneNumberField({
   onChange: (val: string) => void;
   hasError?: boolean;
 }) {
-  const [error, setError] = useState("");
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
+    let newValue = e.target.value;
 
-    if (!/^\d*$/.test(newValue)) return;
+    newValue = newValue.replace(/\D/g, "");
 
     onChange(newValue);
-
-    if (newValue.length > 0 && newValue.length < 10) {
-      setError("WhatsApp number must be at least 10 digits");
-    } else {
-      setError("");
-    }
   };
   return (
     <div className="space-y-1">
@@ -55,7 +47,6 @@ function PhoneNumberField({
         maxLength={10}
         className={hasError ? "border-red-500" : ""}
       />
-      {error && <p className="text-red-500 text-sm">{error}</p>}
     </div>
   );
 }
@@ -105,6 +96,7 @@ export default function AddLeadDrawer({
         priority: "HIGH",
         userId: currentUserId,
       });
+      setEmail([""]);
       setErrors({});
     }
   }, [open, currentUserId]);
@@ -112,28 +104,24 @@ export default function AddLeadDrawer({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.workEmail) {
-      newErrors.workEmail = "Work Email is required";
-    } else if (!emailRegex.test(formData.workEmail)) {
-      newErrors.workEmail = "Work Email is invalid";
+    if (formData.workEmail) {
+      if (!emailRegex.test(formData.workEmail)) {
+        newErrors.workEmail = "Work Email is invalid";
+      }
     }
     if (!formData.firstName) newErrors.firstName = "First Name is required";
-    if (!formData.websiteURL) newErrors.websiteURL = "Website URL is required";
-    if (!formData.linkdinURL) newErrors.linkdinURL = "LinkedIn URL is required";
     if (!formData.industry) newErrors.industry = "Industry is required";
     if (!formData.whatsUpNumber) {
-      newErrors.whatsUpNumber = "";
+      newErrors.whatsUpNumber = "whatsUpNumber is required";
     } else if (formData.whatsUpNumber.length < 10) {
       newErrors.whatsUpNumber = "WhatsApp number must be at least 10 digits";
     }
 
-    email.forEach((email, index) => {
-      if (!email) {
-        newErrors[`email_${index}`] = "Email is required";
-      } else if (!emailRegex.test(email)) {
-        newErrors[`email_${index}`] = "Email is invalid";
-      }
-    });
+    if (email.length === 0 || email.every((e) => !e.trim())) {
+      newErrors.emails = " email is required";
+    } else if (email.some((e) => !emailRegex.test(e))) {
+      newErrors.emails = "Please enter valid email(s)";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -142,23 +130,32 @@ export default function AddLeadDrawer({
   const handleCancel = () => {
     onOpenChange(false);
   };
-
   const handleEmailChange = (index: number, value: string) => {
     const newEmail = [...email];
     newEmail[index] = value;
     setEmail(newEmail);
 
-    if (!value) {
-      setErrors((prev) => ({ ...prev, [`email_${index}`]: "Email is required" }));
-    } else if (!emailRegex.test(value)) {
-      setErrors((prev) => ({ ...prev, [`email_${index}`]: "Email is invalid" }));
-    } else {
-      setErrors((prev) => {
-        const newErr = { ...prev };
-        delete newErr[`email_${index}`];
-        return newErr;
+    setErrors((prev) => {
+      const newErr: Record<string, string> = { ...prev };
+
+      Object.keys(newErr)
+        .filter((key) => key.startsWith("email_") || key === "emails")
+        .forEach((key) => delete newErr[key]);
+
+      let hasError = false;
+      newEmail.forEach((e, i) => {
+        if (!e.trim()) {
+          hasError = true;
+        } else if (!emailRegex.test(e)) {
+          newErr[`email_${i}`] = "Email is invalid";
+          hasError = true;
+        }
       });
-    }
+      if (hasError && newEmail.every((e) => !e.trim())) {
+        newErr.emails = "Email is required";
+      }
+      return newErr;
+    });
   };
 
   const addEmailField = () => {
@@ -168,12 +165,30 @@ export default function AddLeadDrawer({
   const removeEmailField = (index: number) => {
     const newEmail = email.filter((_, i) => i !== index);
     setEmail(newEmail);
+
     setErrors((prev) => {
-      const newErr = { ...prev };
-      delete newErr[`email_${index}`];
+      const newErr: Record<string, string> = { ...prev };
+
+      Object.keys(newErr)
+        .filter((key) => key.startsWith("email_") || key === "emails")
+        .forEach((key) => delete newErr[key]);
+
+      let hasError = false;
+      newEmail.forEach((e, i) => {
+        if (!e.trim()) {
+          hasError = true;
+        } else if (!emailRegex.test(e)) {
+          newErr[`email_${i}`] = "Email is invalid";
+          hasError = true;
+        }
+      });
+      if (hasError && newEmail.every((e) => !e.trim())) {
+        newErr.emails = "Email is required";
+      }
       return newErr;
     });
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +196,13 @@ export default function AddLeadDrawer({
     setIsSubmitting(true);
 
     try {
-      const payload = { ...formData, email };
+      const payload = {
+        ...formData,
+        email,
+        workEmail: formData.workEmail?.trim() ? formData.workEmail : null,
+        websiteURL: formData.websiteURL?.trim() ? formData.websiteURL : null,
+        linkdinURL: formData.linkdinURL?.trim() ? formData.linkdinURL : null,
+      };
       await createOne(LEADS_ENDPOINT, payload);
       onSaved?.();
       onOpenChange(false);
@@ -233,48 +254,56 @@ export default function AddLeadDrawer({
             {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
           </div>
           <div>
-            <Label>Email</Label>
-            <div className="space-y-3">
-              {email.map((email, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => handleEmailChange(index, e.target.value)}
-                    placeholder={`Enter email ${index + 1}`}
-                    className={errors[`email_${index}`] ? "border-red-500" : ""}
-                  />
-                  {email.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEmailField(index)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+            <div>
+              <Label>Email</Label>
+              <div className="space-y-3">
+                {email.map((email, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <div className="flex flex-col flex-1">
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => handleEmailChange(index, e.target.value)}
+                        placeholder={`Enter email ${index + 1}`}
+                      className={errors[`email_${index}`] ? "border-red-500" : ""}
+          />
+                      {errors[`email_${index}`] && (
+                      <p className="text-sm text-red-500">{errors[`email_${index}`]}</p>
+          )}
+                    </div>
+
+                    {index > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEmailField(index)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {errors.emails && (
+                <p className="text-sm text-red-500">{errors.emails}</p>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2"
+                onClick={addEmailField}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Add Email
+              </Button>
             </div>
-            {Object.keys(errors)
-              .filter((key) => key.startsWith("email_"))
-              .map((key) => (
-                <p key={key} className="text-sm text-red-500">
-                  {errors[key]}
-                </p>
-              ))}
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-2"
-              onClick={addEmailField}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Add Email
-            </Button>
+
           </div>
 
           {/*  Work Email */}
+          
           <div>
             <Label>Work Email</Label>
             <Input
@@ -284,22 +313,26 @@ export default function AddLeadDrawer({
                 const value = e.target.value;
                 setFormData((s) => ({ ...s, workEmail: value }));
 
-                if (value === "") {
-                  setErrors((prev) => ({
-                    ...prev,
-                    workEmail: "Work Email is required",
-                  }));
-                } else if (!emailRegex.test(value)) {
+                // Only validate if there's a value, otherwise clear any errors
+                if (value.trim() && !emailRegex.test(value)) {
                   setErrors((prev) => ({
                     ...prev,
                     workEmail: "Work Email is invalid",
                   }));
                 } else {
-                  setErrors((prev) => ({ ...prev, workEmail: "" }));
+                  setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.workEmail;
+                    return newErrors;
+                  });
                 }
               }}
               placeholder="Enter work email"
               className={errors.workEmail ? "border-red-500" : ""}
+              autoComplete="off"
+              data-lpignore="true"
+              data-form-type="other"
+              name="work-email-field"
             />
             {errors.workEmail && (
               <p className="text-sm text-red-500">{errors.workEmail}</p>
@@ -312,10 +345,15 @@ export default function AddLeadDrawer({
               onChange={(e) => {
                 const value = e.target.value;
                 setFormData({ ...formData, websiteURL: value });
-                if (!value.trim()) {
-                  setErrors((prev) => ({ ...prev, websiteURL: "Website URL is required" }));
+                // Only validate if there's a value, otherwise clear any errors
+                if (value.trim() && !/^https?:\/\//i.test(value.trim())) {
+                  setErrors((prev) => ({ ...prev, websiteURL: "Website URL should start with http or https" }));
                 } else {
-                  setErrors((prev) => ({ ...prev, websiteURL: "" }));
+                  setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.websiteURL;
+                    return newErrors;
+                  });
                 }
               }}
               placeholder="https://example.com"
@@ -330,10 +368,15 @@ export default function AddLeadDrawer({
               onChange={(e) => {
                 const value = e.target.value;
                 setFormData({ ...formData, linkdinURL: value });
-                if (!value.trim()) {
-                  setErrors((prev) => ({ ...prev, linkdinURL: "LinkedIn URL is required" }));
+                // Only validate if there's a value, otherwise clear any errors
+                if (value.trim() && !/^https?:\/\//i.test(value.trim())) {
+                  setErrors((prev) => ({ ...prev, linkdinURL: "LinkedIn URL should start with http or https" }));
                 } else {
-                  setErrors((prev) => ({ ...prev, linkdinURL: "" }));
+                  setErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.linkdinURL;
+                    return newErrors;
+                  });
                 }
               }}
               placeholder="https://linkedin.com/in/..."
@@ -363,7 +406,16 @@ export default function AddLeadDrawer({
             <Label>WhatsApp Number</Label>
             <PhoneNumberField
               value={formData.whatsUpNumber}
-              onChange={(val) => setFormData((s) => ({ ...s, whatsUpNumber: val }))}
+              onChange={(val) => {
+                setFormData((s) => ({ ...s, whatsUpNumber: val }));
+                if (!val.trim()) {
+                  setErrors((prev) => ({ ...prev, whatsUpNumber: "WhatsApp Number is required" }));
+                } else if (val.length < 10) {
+                  setErrors((prev) => ({ ...prev, whatsUpNumber: "WhatsApp number must be at least 10 digits" }));
+                } else {
+                  setErrors((prev) => ({ ...prev, whatsUpNumber: "" }));
+                }
+              }}
               hasError={Boolean(errors.whatsUpNumber)}
             />
             {errors.whatsUpNumber && <p className="text-sm text-red-500">{errors.whatsUpNumber}</p>}
