@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { UsersIcon, User, LogOut, Menu, X } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { toast } from "react-hot-toast";
 
@@ -20,19 +21,41 @@ export default function DashboardLayout({
   const [initials, setInitials] = useState<string>("AD")
   const [role, setRole] = useState<string>("")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     (async () => {
       try {
+        // Check if user data is already in localStorage first
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          const first: string = user?.firstName || "";
+          const last: string = user?.lastName || "";
+          setRole(user?.role || "");
+          const fi = first?.charAt(0)?.toUpperCase() || "A";
+          const li = last?.charAt(0)?.toUpperCase() || "D";
+          setInitials(`${fi}${li}`);
+          // Do not return; still refresh from API to avoid stale cache
+        }
+
+        // Only fetch from API if not in localStorage
         const me = await getMe();
         const first: string = me?.user?.firstName || "";
         const last: string = me?.user?.lastName || "";
-        setRole(me?.user?.role || "")
+        setRole(me?.user?.role || "");
         const fi = first?.charAt(0)?.toUpperCase() || "A";
         const li = last?.charAt(0)?.toUpperCase() || "D";
-        setInitials(`${fi}${li}`)
+        setInitials(`${fi}${li}`);
+        
+        // Store in localStorage for future use
+        if (me?.user) {
+          localStorage.setItem("user", JSON.stringify(me.user));
+        }
       } catch (e) {
-        // ignore
+        console.error("Error fetching user data:", e);
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, [])
@@ -45,6 +68,7 @@ export default function DashboardLayout({
       toast.error(`Logout Failed: ${error.message || "Unknown error"}`);
     } finally {
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
       router.push("/login");
     }
   };
@@ -61,6 +85,19 @@ export default function DashboardLayout({
     setIsMobileMenuOpen(false)
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isLeadDetailPage = /^\/dashboard\/leads\/[^/]+$/.test(pathname || "");
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -76,7 +113,9 @@ export default function DashboardLayout({
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
+            <Link href="/dashboard/leads" className="flex items-center" aria-label="Go to Dashboard">
+              <Image src="/cs logo.svg" alt="CS Logo" width={23} height={23} priority />
+            </Link>
           </div>
 
           <DropdownMenu>
@@ -102,59 +141,61 @@ export default function DashboardLayout({
       </header>
 
       <div className="flex">
-        {/* Mobile sidebar overlay */}
-        {isMobileMenuOpen && (
-          <div 
+        {/* Mobile sidebar overlay (hidden on detail page) */}
+        {!isLeadDetailPage && isMobileMenuOpen && (
+          <div
             className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
             onClick={closeMobileMenu}
           />
         )}
 
-        {/* Sidebar */}
-        <aside className={`
-          fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-sm z-40
-          transform transition-transform duration-300 ease-in-out
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0
-        `}>
-          <nav className="p-4">
-            <ul className="space-y-2">
-              <li>
-                <Link
-                  href="/dashboard/leads"
-                  onClick={closeMobileMenu}
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    pathname === "/dashboard/leads"
-                      ? "bg-red-50 text-red-700 border-r-2 border-primary"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-                >
-                  <UsersIcon className="mr-3 h-4 w-4" />
-                  Leads
-                </Link>
-              </li>
-              {role === "SuperAdmin" && (
+        {/* Sidebar (hidden on detail page) */}
+        {!isLeadDetailPage && (
+          <aside className={`
+            fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 shadow-sm z-40
+            transform transition-transform duration-300 ease-in-out
+            ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+            md:translate-x-0
+          `}>
+            <nav className="p-4">
+              <ul className="space-y-2">
                 <li>
                   <Link
-                    href="/dashboard/users"
+                    href="/dashboard/leads"
                     onClick={closeMobileMenu}
                     className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                      pathname === "/dashboard/users"
+                      pathname === "/dashboard/leads"
                         ? "bg-red-50 text-red-700 border-r-2 border-primary"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
-                    <User className="mr-3 h-4 w-4" />
-                    Users
+                    <UsersIcon className="mr-3 h-4 w-4" />
+                    Leads
                   </Link>
                 </li>
-              )}
-            </ul>
-          </nav>
-        </aside>
+                {role === "SuperAdmin" && (
+                  <li>
+                    <Link
+                      href="/dashboard/users"
+                      onClick={closeMobileMenu}
+                      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                        pathname === "/dashboard/users"
+                          ? "bg-red-50 text-red-700 border-r-2 border-primary"
+                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
+                    >
+                      <User className="mr-3 h-4 w-4" />
+                      Users
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </nav>
+          </aside>
+        )}
 
-        {/* Main content - full width on mobile, with margin on desktop */}
-        <main className="w-full md:ml-64 p-4 md:p-6">
+        {/* Main content - full width when sidebar hidden */}
+        <main className={`w-full p-4 md:p-6 ${!isLeadDetailPage ? 'md:ml-64' : ''}`}>
           {children}
         </main>
       </div>

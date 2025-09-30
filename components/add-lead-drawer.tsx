@@ -75,7 +75,6 @@ export default function AddLeadDrawer({
     workEmail: "",
     status: "ACTIVE",
     priority: "HIGH",
-    userId: currentUserId,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,7 +93,6 @@ export default function AddLeadDrawer({
         workEmail: "",
         status: "ACTIVE",
         priority: "HIGH",
-        userId: currentUserId,
       });
       setEmail([""]);
       setErrors({});
@@ -117,12 +115,17 @@ export default function AddLeadDrawer({
       newErrors.whatsUpNumber = "WhatsApp number must be at least 10 digits";
     }
 
-    if (email.length === 0 || email.every((e) => !e.trim())) {
-      newErrors.emails = " email is required";
-    } else if (email.some((e) => !emailRegex.test(e))) {
-      newErrors.emails = "Please enter valid email(s)";
+    if (!email[0] || !email[0].trim()) {
+      newErrors[`email_0`] = "Email is required";
+    } else if (!emailRegex.test(email[0])) {
+      newErrors[`email_0`] = "Email is invalid";
     }
 
+    email.slice(1).forEach((e, i) => {
+      if (e.trim() && !emailRegex.test(e)) {
+        newErrors[`email_${i + 1}`] = "Email is invalid";
+      }
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -134,26 +137,24 @@ export default function AddLeadDrawer({
     const newEmail = [...email];
     newEmail[index] = value;
     setEmail(newEmail);
-
     setErrors((prev) => {
       const newErr: Record<string, string> = { ...prev };
 
       Object.keys(newErr)
-        .filter((key) => key.startsWith("email_") || key === "emails")
+        .filter((key) => key.startsWith("email_"))
         .forEach((key) => delete newErr[key]);
 
-      let hasError = false;
-      newEmail.forEach((e, i) => {
-        if (!e.trim()) {
-          hasError = true;
-        } else if (!emailRegex.test(e)) {
-          newErr[`email_${i}`] = "Email is invalid";
-          hasError = true;
+      if (!newEmail[0] || !newEmail[0].trim()) {
+        newErr[`email_0`] = "Email is required";
+      } else if (!emailRegex.test(newEmail[0])) {
+        newErr[`email_0`] = "Email is invalid";
+      }
+
+      newEmail.slice(1).forEach((e, i) => {
+        if (e.trim() && !emailRegex.test(e)) {
+          newErr[`email_${i + 1}`] = "Email is invalid";
         }
       });
-      if (hasError && newEmail.every((e) => !e.trim())) {
-        newErr.emails = "Email is required";
-      }
       return newErr;
     });
   };
@@ -196,19 +197,23 @@ export default function AddLeadDrawer({
     setIsSubmitting(true);
 
     try {
+      const emailPayload = [email[0], ...email.slice(1).filter((e) => e.trim())];
       const payload = {
         ...formData,
-        email,
+        createdBy: currentUserId,
+        userId: currentUserId,
+        email:emailPayload,
         workEmail: formData.workEmail?.trim() ? formData.workEmail : null,
         websiteURL: formData.websiteURL?.trim() ? formData.websiteURL : null,
         linkdinURL: formData.linkdinURL?.trim() ? formData.linkdinURL : null,
       };
+      console.log("AddLeadDrawer create payload:", payload);
       await createOne(LEADS_ENDPOINT, payload);
       onSaved?.();
       onOpenChange(false);
     } catch (err: any) {
-      console.error("Lead save failed:", err?.message || err);
       const server = err?.response?.data || err
+      console.error("Lead save failed:", server);
       let fieldErrors: Record<string, string> = {}
       const message = server?.message || server?.error || err?.message || "Something went wrong"
       if (server?.errors && typeof server.errors === 'object') {
@@ -225,7 +230,7 @@ export default function AddLeadDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+      <SheetContent className="w-full sm:w-[400px] md:w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Add New Lead</SheetTitle>
           <SheetDescription>
@@ -236,7 +241,7 @@ export default function AddLeadDrawer({
         <form onSubmit={handleSubmit} className="space-y-4 mt-6">
           {errors.form && <p className="text-sm text-red-500">{errors.form}</p>}
           <div>
-            <Label>First Name</Label>
+            <Label>First name</Label>
             <Input
               value={formData.firstName}
               onChange={(e) => {
@@ -255,24 +260,28 @@ export default function AddLeadDrawer({
           </div>
           <div>
             <div>
-              <Label>Email</Label>
-              <div className="space-y-3">
-                {email.map((email, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <div className="flex flex-col flex-1">
-                      <Input
-                        type="email"
-                        value={email}
-                        onChange={(e) => handleEmailChange(index, e.target.value)}
-                        placeholder={`Enter email ${index + 1}`}
-                      className={errors[`email_${index}`] ? "border-red-500" : ""}
-          />
-                      {errors[`email_${index}`] && (
-                      <p className="text-sm text-red-500">{errors[`email_${index}`]}</p>
-          )}
-                    </div>
-
-                    {index > 0 && (
+            <Label>Email address</Label>
+            <div className="space-y-3">
+              {email.map((emailValue, index) => (
+                <div key={index} className="flex flex-col">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="email"
+                      value={emailValue}
+                      onChange={(e) => handleEmailChange(index, e.target.value)}
+                      placeholder="Enter Email address"
+                      className={`flex-1 ${errors[`email_${index}`] ? "border-red-500" : ""}`}
+                    />
+                    {index === 0 ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={addEmailField}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    ) : (
                       <Button
                         type="button"
                         variant="ghost"
@@ -283,28 +292,19 @@ export default function AddLeadDrawer({
                       </Button>
                     )}
                   </div>
-                ))}
-              </div>
-
-              {errors.emails && (
-                <p className="text-sm text-red-500">{errors.emails}</p>
-              )}
-
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-2"
-                onClick={addEmailField}
-              >
-                <Plus className="mr-2 h-4 w-4" /> Add Email
-              </Button>
+                  {errors[`email_${index}`] && (
+                    <p className="text-sm text-red-500 mt-1">{errors[`email_${index}`]}</p>
+                  )}
+                </div>
+              ))}
             </div>
+          </div>
 
           </div>
 
           {/*  Work Email */}
-          
-          <div>
+
+         <div>
             <Label>Work Email</Label>
             <Input
               type="email"
@@ -312,8 +312,7 @@ export default function AddLeadDrawer({
               onChange={(e) => {
                 const value = e.target.value;
                 setFormData((s) => ({ ...s, workEmail: value }));
-
-                // Only validate if there's a value, otherwise clear any errors
+ 
                 if (value.trim() && !emailRegex.test(value)) {
                   setErrors((prev) => ({
                     ...prev,
@@ -345,7 +344,7 @@ export default function AddLeadDrawer({
               onChange={(e) => {
                 const value = e.target.value;
                 setFormData({ ...formData, websiteURL: value });
-                // Only validate if there's a value, otherwise clear any errors
+ 
                 if (value.trim() && !/^https?:\/\//i.test(value.trim())) {
                   setErrors((prev) => ({ ...prev, websiteURL: "Website URL should start with http or https" }));
                 } else {
@@ -368,7 +367,7 @@ export default function AddLeadDrawer({
               onChange={(e) => {
                 const value = e.target.value;
                 setFormData({ ...formData, linkdinURL: value });
-                // Only validate if there's a value, otherwise clear any errors
+ 
                 if (value.trim() && !/^https?:\/\//i.test(value.trim())) {
                   setErrors((prev) => ({ ...prev, linkdinURL: "LinkedIn URL should start with http or https" }));
                 } else {

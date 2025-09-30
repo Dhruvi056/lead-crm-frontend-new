@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
@@ -62,6 +63,12 @@ export default function LoginPage() {
       if (data?.token) {
         localStorage.setItem("token", data.token);
       }
+      if (data?.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      } else {
+        // Clear any stale user to avoid cross-session bleed
+        localStorage.removeItem("user");
+      }
       toast.success(data.message || "Login successful!");
       router.push("/dashboard");
     } catch (error) {
@@ -75,8 +82,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Admin Panel
+          <div className="flex justify-center">
+            <Image src="/cs logo.svg" alt="CS Logo" width={56} height={56} priority />
+          </div>
+          <CardTitle className="text-center text-xl font-semibold">
+            Login
           </CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access the dashboard

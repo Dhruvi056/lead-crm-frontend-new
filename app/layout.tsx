@@ -7,9 +7,9 @@ import toast, { Toaster } from "react-hot-toast";
 
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'CS CRM',
+  description: 'Admin Panel for Lead Management',
+  generator: 'Lead CRM Dev',
 }
 
 export default function RootLayout({
@@ -20,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/cs logo.svg" type="image/svg+xml" />
         <style>{`
 html {
   font-family: ${GeistSans.style.fontFamily};

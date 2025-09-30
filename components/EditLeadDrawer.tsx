@@ -26,8 +26,8 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function PhoneNumberField({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [error, setError] = useState("");
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    if (!/^\d*$/.test(newValue)) return;
+   const newValue = e.target.value.replace(/\D/g, "");
+
     onChange(newValue);
     if (newValue.length > 0 && newValue.length < 10) setError("WhatsApp number must be at least 10 digits");
     else setError("");
@@ -67,7 +67,6 @@ export default function EditLeadDrawer({
     workEmail: "",
     status: "ACTIVE",
     priority: "HIGH",
-    userId: currentUserId,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,7 +85,6 @@ export default function EditLeadDrawer({
         workEmail: leadData.workEmail || "",
         status: leadData.status || "ACTIVE",
         priority: leadData.priority || "HIGH",
-        userId: leadData.userId || currentUserId,
       });
 
       setErrors({});
@@ -100,29 +98,41 @@ export default function EditLeadDrawer({
     newEmail[index] = value;
     setEmail(newEmail);
 
-    if (!value) {
-      setErrors((prev) => ({ ...prev, [`email_${index}`]: "Email is required" }));
-    } else if (!emailRegex.test(value)) {
-      setErrors((prev) => ({ ...prev, [`email_${index}`]: "Email is invalid" }));
-    } else {
-      setErrors((prev) => {
-        const newErr = { ...prev };
-        delete newErr[`email_${index}`];
-        return newErr;
+   setErrors((prev) => {
+      const newErr: Record<string, string> = { ...prev };
+      Object.keys(newErr).filter((key) => key.startsWith("email_")).forEach((key) => delete newErr[key]);
+ 
+      if (!newEmail[0].trim()) newErr[`email_0`] = "Email is required";
+      else if (!emailRegex.test(newEmail[0])) newErr[`email_0`] = "Email is invalid";
+ 
+      newEmail.slice(1).forEach((e, i) => {
+        if (e.trim() && !emailRegex.test(e)) newErr[`email_${i + 1}`] = "Email is invalid";
       });
-      setErrors({});
-    }
-  };
-
-  const addEmailField = () => setEmail((prev) => [...prev, ""]);
-  const removeEmailField = (index: number) => {
-    setEmail(email.filter((_, i) => i !== index));
-    setErrors((prev) => {
-      const newErr = { ...prev };
-      delete newErr[`email_${index}`];
+ 
       return newErr;
     });
   };
+
+
+const addEmailField = () => setEmail((prev) => [...prev, ""]);
+  const removeEmailField = (index: number) => {
+    const newEmail = email.filter((_, i) => i !== index);
+    setEmail(newEmail);
+ 
+    setErrors((prev) => {
+      const newErr: Record<string, string> = { ...prev };
+      Object.keys(newErr).filter((key) => key.startsWith("email_")).forEach((key) => delete newErr[key]);
+ 
+      if (!newEmail[0]?.trim()) newErr[`email_0`] = "Email is required";
+      else if (!emailRegex.test(newEmail[0])) newErr[`email_0`] = "Email is invalid";
+ 
+      newEmail.slice(1).forEach((e, i) => {
+        if (e.trim() && !emailRegex.test(e)) newErr[`email_${i + 1}`] = "Email is invalid";
+      });
+      return newErr;
+    });
+  };
+
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -132,13 +142,16 @@ export default function EditLeadDrawer({
     if (!formData.whatsUpNumber) newErrors.whatsUpNumber = "";
     else if (formData.whatsUpNumber.length < 10) newErrors.whatsUpNumber = "WhatsApp number must be at least 10 digits";
 
-    email.forEach((e, i) => {
-      if (!e) newErrors[`email_${i}`] = "Email is required";
-      else if (!emailRegex.test(e)) newErrors[`email_${i}`] = "Email is invalid";
+   if (!email[0]?.trim()) newErrors[`email_0`] = "Email is required";
+    else if (!emailRegex.test(email[0])) newErrors[`email_0`] = "Email is invalid";
+ 
+    email.slice(1).forEach((e, i) => {
+      if (e.trim() && !emailRegex.test(e)) newErrors[`email_${i + 1}`] = "Email is invalid";
     });
-
-    if (formData.workEmail && !emailRegex.test(formData.workEmail)) newErrors.workEmail = "Work Email is invalid";
-
+ 
+    if (formData.workEmail?.trim() && !emailRegex.test(formData.workEmail)) newErrors.workEmail = "Work Email is invalid";
+    if (formData.websiteURL?.trim() && !/^https?:\/\//i.test(formData.websiteURL)) newErrors.websiteURL = "Website URL must start with http or https";
+    if (formData.linkdinURL?.trim() && !/^https?:\/\//i.test(formData.linkdinURL)) newErrors.linkdinURL = "LinkedIn URL must start with http or https";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -149,19 +162,35 @@ export default function EditLeadDrawer({
     setIsSubmitting(true);
 
     try {
+      const emailPayload = [email[0], ...email.slice(1).filter((e) => e.trim())];
       const payload = { 
         ...formData, 
-        email,
+        updatedBy: currentUserId,
+        userId: currentUserId,
+        email:emailPayload,
         workEmail: formData.workEmail?.trim() ? formData.workEmail : null,
         websiteURL: formData.websiteURL?.trim() ? formData.websiteURL : null,
         linkdinURL: formData.linkdinURL?.trim() ? formData.linkdinURL : null,
       };
+      console.log("EditLeadDrawer update payload:", payload);
       await updateOne(LEADS_ENDPOINT, leadData._id, payload);
       onSaved?.();
       onOpenChange(false);
     } catch (err: any) {
-      console.error("Lead update failed:", err?.message || err);
-      setErrors((prev) => ({ ...prev, form: err?.message || "Something went wrong" }));
+      const server = err?.response?.data || err;
+      console.error("Lead update failed:", server);
+      let message = server?.message || server?.error || err?.message || "Something went wrong";
+      if (server?.errors) {
+        try {
+          const details = Array.isArray(server.errors)
+            ? server.errors.join(", ")
+            : typeof server.errors === 'object'
+              ? Object.values(server.errors).map((v:any)=>Array.isArray(v)?v[0]:v).join(", ")
+              : String(server.errors);
+          if (details) message = details;
+        } catch {}
+      }
+      setErrors((prev) => ({ ...prev, form: message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -169,36 +198,50 @@ export default function EditLeadDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+    <SheetContent className="w-full sm:w-[400px] md:w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Edit Lead</SheetTitle>
           <SheetDescription>Update the information below to edit the lead.</SheetDescription>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+          {errors.form && <p className="text-sm text-red-500">{errors.form}</p>}
+
           <div>
-            <Label>First Name</Label>
+            <Label>First name</Label>
             <Input
               value={formData.firstName}
               onChange={(e) => setFormData((s) => ({ ...s, firstName: e.target.value }))}
               placeholder="Enter first name"
+              className={errors.firstName ? "border-red-500" : ""}
+
             />
             {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
           </div>
 
           <div>
-            <Label>Email</Label>
+            <Label>Email address</Label>
             <div className="space-y-3">
               {email.map((e, i) => (
                 <div key={i} className="flex items-center space-x-2">
-                  <Input
-                    type="email"
-                    value={e}
-                    onChange={(ev) => handleEmailChange(i, ev.target.value)}
-                    placeholder={`Enter email ${i + 1}`}
-                    className={errors[`email_${i}`] ? "border-red-500" : ""}
-                  />
-                  {email.length > 1 && (
+                  <div className="flex-1">
+                    <Input
+                      type="email"
+                      value={e}
+                      onChange={(ev) => handleEmailChange(i, ev.target.value)}
+                      placeholder="Enter Email address"
+                      className={errors[`email_${i}`] ? "border-red-500" : ""}
+                    />
+                    {errors[`email_${i}`] && (
+                      <p className="text-sm text-red-500">{errors[`email_${i}`]}</p>
+                    )}
+                  </div>
+ 
+                  {i === 0 ? (
+                    <Button type="button" variant="outline" size="icon" onClick={addEmailField}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  ) : (
                     <Button type="button" variant="ghost" size="icon" onClick={() => removeEmailField(i)}>
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
@@ -206,14 +249,6 @@ export default function EditLeadDrawer({
                 </div>
               ))}
             </div>
-            {Object.keys(errors)
-              .filter((key) => key.startsWith("email_"))
-              .map((key) => (
-                <p key={key} className="text-sm text-red-500">{errors[key]}</p>
-              ))}
-            <Button type="button" variant="outline" className="mt-2" onClick={addEmailField}>
-              <Plus className="mr-2 h-4 w-4" /> Add Email
-            </Button>
           </div>
 
           <div>
@@ -227,13 +262,7 @@ export default function EditLeadDrawer({
             {errors.workEmail && <p className="text-sm text-red-500">{errors.workEmail}</p>}
           </div>
 
-          <div>
-            <Label>WhatsApp Number</Label>
-            <PhoneNumberField value={formData.whatsUpNumber} 
-            onChange={(val) => setFormData((s) => ({ ...s, whatsUpNumber: val }))} />
-            {errors.whatsUpNumber && <p className="text-sm text-red-500">{errors.whatsUpNumber}</p>}
-          </div>
-
+         
           <div>
             <Label>Website URL</Label>
             <Input value={formData.websiteURL} 
@@ -255,6 +284,13 @@ export default function EditLeadDrawer({
             <Input value={formData.industry} onChange={(e) => setFormData((s) => ({ ...s, industry: e.target.value }))} placeholder="Enter industry" />
             {errors.industry && <p className="text-sm text-red-500">{errors.industry}</p>}
           </div>
+          <div>
+            <Label>WhatsApp number</Label>
+            <PhoneNumberField value={formData.whatsUpNumber}
+              onChange={(val) => setFormData((s) => ({ ...s, whatsUpNumber: val }))} />
+            {errors.whatsUpNumber && <p className="text-sm text-red-500">{errors.whatsUpNumber}</p>}
+          </div>
+
 
           {/* Status */}
           <div>

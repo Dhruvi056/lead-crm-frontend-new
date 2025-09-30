@@ -53,7 +53,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit] = useState(3); // rows per page
+  const [limit] = useState(10); 
   const [totalPages, setTotalPages] = useState(1);
   const [roleFilter, setRoleFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -108,7 +108,6 @@ export default function UsersPage() {
     fetchUsers();
   }, [searchTerm, roleFilter, currentPage]);
 
-  // Delete User
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
     try {
@@ -133,7 +132,7 @@ export default function UsersPage() {
           <Plus className="mr-2 h-4 w-4" /> Add User
         </Button>
       </div>
-        {/* serch */}
+        
       <div className="flex space-x-4">
         <div className="relative flex-1">
           <Search className="absolute top-2 left-3 text-gray-400 w-4 h-4" />

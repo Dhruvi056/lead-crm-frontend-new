@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -35,7 +36,7 @@ import {
 import Pagination from "@/components/Pagination";
 import AddLeadDrawer from "@/components/add-lead-drawer";
 import EditLeadDrawer from "@/components/EditLeadDrawer";
-import { getAll, deleteOne } from "@/app/utils/api";
+import { getAll, deleteOne, getMe } from "@/app/utils/api";
 import toast from "react-hot-toast";
 import {
   Plus,
@@ -47,64 +48,55 @@ import {
   Eye,
 } from "lucide-react";
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDrawer, setOpenDrawer] = useState(false);
   const [openEditDrawer, setOpenEditDrawer] = useState(false);
   const [editLead, setEditLead] = useState<any | null>(null);
-  const [viewLead, setViewLead] = useState<any | null>(null);
-  const [openViewDialog, setOpenViewDialog] = useState(false);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<any | null>(null);
-  const currentUserId = "64f8b5c2d1234abcd567ef90";
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchLeads = async () => {
-    try {
-      setLoading(true);
+ const fetchLeads = async () => {
+  try {
+    setLoading(true);
 
-      const params: Record<string, any> = {
-        page: currentPage,
-        limit,
-      };
-      if (searchTerm?.trim()) params.search = searchTerm.trim();
-      if (statusFilter && statusFilter !== "all") params.status = statusFilter;
+    const params: Record<string, any> = {
+      page: currentPage,
+      limit,
+    };
+    if (searchTerm?.trim()) params.search = searchTerm.trim();
+    if (statusFilter && statusFilter !== "all") params.status = statusFilter;
 
-      const response = await getAll("lead", params);
+    const response = await getAll("lead", params);
 
-      const leadsArray =
-        response?.leads && Array.isArray(response.leads)
-          ? response.leads
-          : response?.data && Array.isArray(response.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : [];
+    const leadsArray = Array.isArray(response?.data) ? response.data : [];
 
-      const total =
-        typeof response?.totalPages === "number"
-          ? response.totalPages
-          : response?.meta?.totalPages
-            ? response.meta.totalPages
-            : 1;
+    // ✅ total pages from meta
+    const total =
+      typeof response?.meta?.totalPages === "number"
+        ? response.meta.totalPages
+        : 1;
 
-      setLeads(leadsArray);
-      setTotalPages(total > 0 ? total : 1);
-    } catch (error: any) {
-      console.error("Fetch leads error:", error);
-      toast.error("Failed to fetch leads");
-      setLeads([]);
-      setTotalPages(1);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setLeads(leadsArray);
+    setTotalPages(total > 0 ? total : 1);
+  } catch (error: any) {
+    console.error("Fetch leads error:", error);
+    toast.error("Failed to fetch leads");
+    setLeads([]);
+    setTotalPages(1);
+  } finally {
+    setLoading(false);
+  }
+};
+
   const handleDelete = async (id: string) => {
     try {
       await deleteOne("lead", id);
@@ -129,6 +121,23 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads();
   }, [currentPage, searchTerm, statusFilter]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await getMe();
+        const id = me?.user?._id || "";
+        if (id) {
+          setCurrentUserId(id);
+          localStorage.setItem("user", JSON.stringify(me.user));
+        } else {
+          setCurrentUserId("");
+          localStorage.removeItem("user");
+        }
+      } catch {
+        setCurrentUserId("");
+      }
+    })();
+  }, []);
 
   return (
     <div className="space-y-6 p-6">
@@ -140,6 +149,7 @@ export default function LeadsPage() {
             setEditLead(null);
             setOpenDrawer(true);
           }}
+          disabled={!currentUserId}
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Lead
@@ -185,7 +195,7 @@ export default function LeadsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>First Name</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Email address</TableHead>
                 <TableHead>WhatsApp</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
@@ -248,16 +258,11 @@ export default function LeadsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
 
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setViewLead(lead);
-                              setOpenViewDialog(true);
-                            }}
-                          >
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/leads/${lead._id}`)}>
                             <Eye className="mr-2 h-4 w-4" /> View
                           </DropdownMenuItem>
 
-                          <DropdownMenuItem onClick={() => handleEdit(lead)}>
+                          <DropdownMenuItem onClick={() => handleEdit(lead)} disabled={!currentUserId}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
 
@@ -308,27 +313,7 @@ export default function LeadsPage() {
           toast.success("Lead updated successfully");
         }}
       />
-      {/* View Lead */}
-      <Dialog open={openViewDialog} onOpenChange={setOpenViewDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-red-600">Lead Details</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-2">
-            <p><strong>websiteURL:</strong> {viewLead?.websiteURL || "N/A"}</p>
-            <p><strong>linkdinURL:</strong> {viewLead?.linkdinURL || "N/A"}</p>
-            <p><strong>Industry:</strong> {viewLead?.industry || "N/A"}</p>
-            <p><strong>WhatsApp Number:</strong> {viewLead?.whatsUpNumber || "N/A"}</p>
-            <p><strong>Status:</strong> {viewLead?.status || "N/A"}</p>
-            <p><strong>Priority:</strong> {viewLead?.priority || "N/A"}</p>
-          </div>
-          <DialogFooter className="flex justify-end">
-            <Button variant="destructive" onClick={() => setOpenViewDialog(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* View Lead moved to route /dashboard/leads/[id] */}
 
       {/* Delete */}
       {confirmDelete && leadToDelete && (
