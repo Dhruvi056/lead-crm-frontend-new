@@ -59,43 +59,6 @@ export const getById = async (endpoint: string, id: string) => {
   }
 };
 
-// Notes API functions
-export const getNotes = async (leadId: string) => {
-  try {
-    const response = await api.get(`/lead/${leadId}/notes`);
-    return response.data;
-  } catch (error: any) {
-    throw error.response?.data || error.message;
-  }
-};
-
-export const addNote = async (leadId: string, noteData: { content: string; type?: string }) => {
-  try {
-    const response = await api.post(`/lead/${leadId}/notes`, noteData);
-    return response.data;
-  } catch (error: any) {
-    throw error.response?.data || error.message;
-  }
-};
-
-export const updateNote = async (leadId: string, noteId: string, noteData: { content: string }) => {
-  try {
-    const response = await api.put(`/lead/${leadId}/notes/${noteId}`, noteData);
-    return response.data;
-  } catch (error: any) {
-    throw error.response?.data || error.message;
-  }
-};
-
-export const deleteNote = async (leadId: string, noteId: string) => {
-  try {
-    const response = await api.delete(`/lead/${leadId}/notes/${noteId}`);
-    return response.data;
-  } catch (error: any) {
-    throw error.response?.data || error.message;
-  }
-};
-
 //  CREATE
 export const createOne = async (endpoint: string, data: any) => {
   try {
@@ -165,3 +128,26 @@ export const updateProfileApi = async (id: string, payload: { firstName?: string
     throw error.response?.data || error.message;
   }
 }
+//  Get notes
+export const getNotes = async (leadId: string) => {
+  const response = await api.get(`/note/${leadId}/notes`);
+  return response.data;
+};
+
+//  Add note
+export const addNote = async (leadId: string, noteData: { content: string }) => {
+  const response = await api.post(`/note/${leadId}/notes`, noteData);
+  return response.data;
+};
+
+//  Update note 
+export const updateNoteApi = async (noteId: string, noteData: { content: string }) => {
+  const response = await api.put(`/note/notes/${noteId}`, noteData);
+  return response.data;
+};
+
+//  Delete note 
+export const deleteNoteApi = async (noteId: string) => {
+  const response = await api.delete(`/note/notes/${noteId}`);
+  return response.data;
+};

@@ -78,8 +78,6 @@ export default function LeadsPage() {
     const response = await getAll("lead", params);
 
     const leadsArray = Array.isArray(response?.data) ? response.data : [];
-
-    // ✅ total pages from meta
     const total =
       typeof response?.meta?.totalPages === "number"
         ? response.meta.totalPages
@@ -156,7 +154,6 @@ export default function LeadsPage() {
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex items-center space-x-4">
         <div className="relative flex-1 max-w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -261,7 +258,6 @@ export default function LeadsPage() {
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/leads/${lead._id}`)}>
                             <Eye className="mr-2 h-4 w-4" /> View
                           </DropdownMenuItem>
-
                           <DropdownMenuItem onClick={() => handleEdit(lead)} disabled={!currentUserId}>
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
@@ -293,7 +289,6 @@ export default function LeadsPage() {
           onPageChange={(page) => setCurrentPage(page)}
         />
       </div>
-
       <AddLeadDrawer
         open={openDrawer}
         onOpenChange={setOpenDrawer}
@@ -313,9 +308,6 @@ export default function LeadsPage() {
           toast.success("Lead updated successfully");
         }}
       />
-      {/* View Lead moved to route /dashboard/leads/[id] */}
-
-      {/* Delete */}
       {confirmDelete && leadToDelete && (
         <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
           <DialogContent>
