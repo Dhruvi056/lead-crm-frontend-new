@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
   ssr: false,
 });
-import { ArrowLeft, Search, Save, Plus, Trash2, Edit2 } from "lucide-react";
+import { ArrowLeft, Search, Save, Plus, Trash2, Edit2, X } from "lucide-react";
 import {
   getById,
   getNotes,
@@ -36,8 +36,10 @@ export default function ViewLeadPage() {
   const [editContent, setEditContent] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newNoteHtml, setNewNoteHtml] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
-  // 👉 New state for showing info
+  //  New state for showing info
   const [infoType, setInfoType] = useState<"email" | "phone" | null>(null);
 
   // Fetch lead details
@@ -55,16 +57,32 @@ export default function ViewLeadPage() {
   }, [id]);
 
   // Fetch notes for this lead
+  const fetchNotes = async (searchQuery?: string) => {
+    try {
+      setIsSearching(true);
+      const res = await getNotes(id, searchQuery);
+      setNotes(res?.data || []);
+    } catch (e) {
+      console.error("Error fetching notes", e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await getNotes(id);
-        setNotes(res?.data || []);
-      } catch (e) {
-        console.error("Error fetching notes", e);
-      }
-    })();
+    fetchNotes();
   }, [id]);
+
+  // Search notes with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (activeTab === "notes") {
+        fetchNotes(searchTerm);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, activeTab]);
 
   // Add note
   const handleAddNote = async () => {
@@ -76,6 +94,8 @@ export default function ViewLeadPage() {
       setNewNote("");
       setNewNoteHtml("");
       setShowAddForm(false);
+      // Refresh search results
+      fetchNotes(searchTerm);
     } catch (err) {
       console.error("Error adding note:", err);
     }
@@ -92,17 +112,20 @@ export default function ViewLeadPage() {
       setEditingNote(null);
       setEditContent("");
       setShowAddForm(false);
+      // Refresh search results
+      fetchNotes(searchTerm);
     } catch (err) {
       console.error("Error updating note:", err);
     }
   };
 
-  // Delete note
   const handleDeleteNote = async (noteId: string) => {
     if (!confirm("Are you sure you want to delete this note?")) return;
     try {
       await deleteNoteApi(noteId);
       setNotes((prev) => prev.filter((note) => note._id !== noteId));
+      // Refresh search results
+      fetchNotes(searchTerm);
     } catch (err) {
       console.error("Error deleting note:", err);
     }
@@ -119,7 +142,7 @@ export default function ViewLeadPage() {
     setEditContent("");
   };
 
-  // Toggle Email / Phone
+
   const handleToggleInfo = (type: "email" | "phone") => {
     if (infoType === type) {
       setInfoType(null);
@@ -128,10 +151,20 @@ export default function ViewLeadPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Lead Card */}
+        
         <Card className="md:col-span-1">
           <div className="mb-3 pt-5">
             <Button
@@ -155,7 +188,6 @@ export default function ViewLeadPage() {
               </div>
             </div>
 
-            {/* Email / Call Buttons */}
             <div className="mt-4 grid grid-cols-2 gap-2 text-center">
               <Button
                 variant={infoType === "email" ? "default" : "outline"}
@@ -173,7 +205,6 @@ export default function ViewLeadPage() {
               </Button>
             </div>
 
-            {/* Conditional Display */}
             {infoType === "email" && (
               <div className="mt-3 text-sm text-gray-700">
                 <strong>Emails:</strong>
@@ -196,7 +227,6 @@ export default function ViewLeadPage() {
               </div>
             )}
 
-            {/* Lead Info */}
             {infoType === null && (
               <div className="mt-6 space-y-4 text-sm">
                   <div className="flex items-center gap-6 border-b">
@@ -226,19 +256,30 @@ export default function ViewLeadPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Right Section */}
         <div className="md:col-span-2">
-          {/* Search */}
+        
           <div className="mb-3 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search activity, notes, email and more"
-              className="h-10 pl-9"
+              className="h-10 pl-9 pr-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {isSearching ? (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              </div>
+            ) : searchTerm ? (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
 
-          {/* Tabs */}
           <div className="flex items-center gap-2 bg-white rounded-md border p-2 mb-4">
             {(
               ["activity", "notes", "emails", "calls", "task"] as const
@@ -256,7 +297,6 @@ export default function ViewLeadPage() {
             ))}
           </div>
 
-          {/* Tab Content */}
           <div className="min-h-[400px]">
             {activeTab === "activity" && (
               <div className="text-center py-8 text-gray-500">
@@ -267,7 +307,7 @@ export default function ViewLeadPage() {
 
             {activeTab === "notes" && (
               <div className="space-y-4">
-                {/* Add Note */}
+          
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -322,14 +362,20 @@ export default function ViewLeadPage() {
                   </CardContent>
                 </Card>
 
-                {/* Notes List */}
                 <div className="space-y-3">
-                  {notes.length === 0 ? (
+                  {isSearching ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                      <div>Searching notes...</div>
+                    </div>
+                  ) : notes.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <div className="text-4xl mb-2">📝</div>
-                      <div>No notes yet</div>
+                      <div>
+                        {searchTerm ? `No notes found for "${searchTerm}"` : "No notes yet"}
+                      </div>
                       <div className="text-sm mt-2">
-                        Click "Add Note" to create your first note
+                        {searchTerm ? "Try a different search term" : 'Click "Add Note" to create your first note'}
                       </div>
                     </div>
                   ) : (

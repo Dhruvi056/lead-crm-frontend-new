@@ -129,8 +129,9 @@ export const updateProfileApi = async (id: string, payload: { firstName?: string
   }
 }
 //  Get notes
-export const getNotes = async (leadId: string) => {
-  const response = await api.get(`/note/${leadId}/notes`);
+export const getNotes = async (leadId: string, search?: string) => {
+  const params = search ? { search } : {};
+  const response = await api.get(`/note/${leadId}/notes`, { params });
   return response.data;
 };
 
