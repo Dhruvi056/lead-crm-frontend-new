@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import dynamic from "next/dynamic";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), {
   ssr: false,
@@ -38,6 +45,8 @@ export default function ViewLeadPage() {
   const [newNoteHtml, setNewNoteHtml] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<any | null>(null);
 
   //  New state for showing info
   const [infoType, setInfoType] = useState<"email" | "phone" | null>(null);
@@ -120,12 +129,21 @@ export default function ViewLeadPage() {
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    if (!confirm("Are you sure you want to delete this note?")) return;
+    const note = notes.find(n => n._id === noteId);
+    if (note) {
+      setNoteToDelete(note);
+      setConfirmDeleteNote(true);
+    }
+  };
+
+  const handleDeleteNoteConfirm = async () => {
+    if (!noteToDelete) return;
     try {
-      await deleteNoteApi(noteId);
-      setNotes((prev) => prev.filter((note) => note._id !== noteId));
-      // Refresh search results
+      await deleteNoteApi(noteToDelete._id);
+      setNotes((prev) => prev.filter((note) => note._id !== noteToDelete._id));
       fetchNotes(searchTerm);
+      setConfirmDeleteNote(false);
+      setNoteToDelete(null);
     } catch (err) {
       console.error("Error deleting note:", err);
     }
@@ -353,8 +371,7 @@ export default function ViewLeadPage() {
                             onClick={() => setShowAddForm(false)}
                             variant="outline"
                             size="sm"
-                          >
-                            Cancel
+                          > Cancel
                           </Button>
                         </div>
                       </div>
@@ -430,7 +447,7 @@ export default function ViewLeadPage() {
                                     </span>
                                     <span>•</span>
                                     <span>{lead?.firstName || "Unknown"}</span>
-                                    {note.updatedAt && (
+                                    {note.updatedAt && note.updatedAt !== note.createdAt && (
                                       <>
                                         <span>•</span>
                                         <span>
@@ -473,19 +490,17 @@ export default function ViewLeadPage() {
             )}
             {activeTab === "emails" && (
               <div className="text-center py-8 text-gray-500">
-                <div className="text-4xl mb-2">📧</div>
+
                 <div>No emails yet</div>
               </div>
             )}
             {activeTab === "calls" && (
               <div className="text-center py-8 text-gray-500">
-                <div className="text-4xl mb-2">📞</div>
                 <div>No calls yet</div>
               </div>
             )}
             {activeTab === "task" && (
               <div className="text-center py-8 text-gray-500">
-                <div className="text-4xl mb-2">✅</div>
                 <div>No tasks yet</div>
               </div>
             )}
@@ -493,6 +508,30 @@ export default function ViewLeadPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Note Confirmation Dialog */}
+      {confirmDeleteNote && noteToDelete && (
+        <Dialog open={confirmDeleteNote} onOpenChange={setConfirmDeleteNote}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-red-600">Delete Note</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p>
+                Are you sure you want to delete this note? This action cannot be undone.
+              </p>
+            </div>
+            <DialogFooter className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setConfirmDeleteNote(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteNoteConfirm}>
+                Yes, Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
